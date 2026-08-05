@@ -9,7 +9,7 @@ import urllib.parse
 import ssl
 import sys
 
-SITEMAP_URL = "https://hypertrace.onrender.com/sitemap.xml"
+SITEMAP_URL = "https://hypertrace.flugelsoft.com/sitemap.xml"
 
 SEARCH_ENGINES = [
     {

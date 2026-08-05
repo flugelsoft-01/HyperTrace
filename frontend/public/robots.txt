@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /api/*
 
-Sitemap: https://hypertrace.onrender.com/sitemap.xml
+Sitemap: https://hypertrace.flugelsoft.com/sitemap.xml
