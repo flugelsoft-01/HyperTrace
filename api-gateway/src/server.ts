@@ -39,7 +39,7 @@ app.get('*', (req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`=======================================================`);
-  console.log(`🚀 Hyperledger Fabric REST API Gateway running on port ${PORT}`);
+  console.log(`🚀 HyperTrace REST API Gateway running on port ${PORT}`);
   console.log(`🔗 Channel: mychannel | Org: Org1MSP (peer0.org1.example.com)`);
   console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`📦 Shipments API: http://localhost:${PORT}/api/shipments`);

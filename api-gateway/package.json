@@ -1,5 +1,5 @@
 {
-  "name": "supplychain-api-gateway",
+  "name": "hypertrace-api-gateway",
   "version": "1.0.0",
   "description": "Hyperledger Fabric REST API Client Gateway",
   "main": "dist/server.js",

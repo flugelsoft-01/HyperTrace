@@ -1,5 +1,5 @@
 {
-  "name": "supplychain-chaincode",
+  "name": "hypertrace-chaincode",
   "version": "1.0.0",
   "description": "Hyperledger Fabric Supply Chain Smart Contract",
   "main": "dist/index.js",

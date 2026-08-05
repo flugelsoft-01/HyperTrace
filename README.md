@@ -1,4 +1,4 @@
-# Hyperledger Fabric Supply Chain & Logistics Tracking Application
+# HyperTrace — Smart Supply Chain & Logistics Tracking Application
 
 An enterprise-grade **Supply Chain and Cold-Chain Logistics Tracking System** powered by **Hyperledger Fabric v2.5**, features smart contract chaincode (TypeScript), a Node.js REST API Client Gateway, a modern Dark Glassmorphism React UI Dashboard, and an automated IoT simulation suite.
 

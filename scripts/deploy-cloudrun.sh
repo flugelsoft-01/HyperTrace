@@ -3,7 +3,7 @@ set -e
 
 # Google Cloud Run Free Tier Automated Deployment Script
 
-SERVICE_NAME="hyperledger-supplychain"
+SERVICE_NAME="hypertrace"
 REGION="us-central1"
 
 echo "========================================================="
