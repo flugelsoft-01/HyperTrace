@@ -7,8 +7,9 @@ import { HistoryTimeline } from './components/HistoryTimeline';
 import { ActionsModal } from './components/ActionsModal';
 import { QRCodeModal } from './components/QRCodeModal';
 import { CertificateModal } from './components/CertificateModal';
+import { TechStackModal } from './components/TechStackModal';
 import { Shipment, HistoryRecord, ShipmentStatus, CertificateData, MSPRole } from './types';
-import { MapPin, Thermometer, Truck, ShieldAlert, Layers, QrCode, FileCheck, Box, Zap, Heart } from 'lucide-react';
+import { MapPin, Thermometer, Truck, ShieldAlert, Layers, QrCode, FileCheck, Box, Zap, Info } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'location' | 'telemetry' | 'custody' | 'simulator' | null>(null);
   const [showQRModal, setShowQRModal] = useState<boolean>(false);
+  const [showTechStackModal, setShowTechStackModal] = useState<boolean>(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
   const [activeRole, setActiveRole] = useState<MSPRole>('Org1MSP');
   const [sseConnected, setSseConnected] = useState<boolean>(false);
@@ -74,7 +76,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Setup Real-time Server-Sent Events (SSE) Stream
   useEffect(() => {
     fetchShipments();
 
@@ -383,7 +384,7 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Modern Footer with Flugelsoft Labs Copyrights */}
+      {/* Modern Footer with Flugelsoft Labs Copyrights & Tech Stack Spec Link */}
       <footer style={{
         borderTop: '1px solid var(--border-card)',
         background: 'rgba(9, 13, 22, 0.95)',
@@ -411,8 +412,30 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            © 2026 <strong>Flugelsoft Labs</strong>. All Rights Reserved.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <button
+              onClick={() => setShowTechStackModal(true)}
+              style={{
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                color: '#60a5fa',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Info size={14} /> Technology Stack & Application Spec
+            </button>
+
+            <div>
+              © 2026 <strong>Flugelsoft Labs</strong>. All Rights Reserved.
+            </div>
           </div>
         </div>
       </footer>
@@ -438,6 +461,11 @@ export const App: React.FC = () => {
       <CertificateModal
         certData={certData}
         onClose={() => setCertData(null)}
+      />
+
+      <TechStackModal
+        isOpen={showTechStackModal}
+        onClose={() => setShowTechStackModal(false)}
       />
     </div>
   );
