@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { ShipmentCard } from './components/ShipmentCard';
 import { TelemetryChart } from './components/TelemetryChart';
+import { WorldMap } from './components/WorldMap';
 import { HistoryTimeline } from './components/HistoryTimeline';
 import { ActionsModal } from './components/ActionsModal';
-import { Shipment, HistoryRecord, ShipmentStatus } from './types';
-import { PlusCircle, MapPin, Thermometer, Truck, ShieldAlert, Sparkles, Activity, Layers } from 'lucide-react';
+import { QRCodeModal } from './components/QRCodeModal';
+import { CertificateModal } from './components/CertificateModal';
+import { Shipment, HistoryRecord, ShipmentStatus, CertificateData, MSPRole } from './types';
+import { MapPin, Thermometer, Truck, ShieldAlert, Layers, QrCode, FileCheck, Box, Zap, Heart } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -14,6 +17,11 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'location' | 'telemetry' | 'custody' | 'simulator' | null>(null);
+  const [showQRModal, setShowQRModal] = useState<boolean>(false);
+  const [certData, setCertData] = useState<CertificateData | null>(null);
+  const [activeRole, setActiveRole] = useState<MSPRole>('Org1MSP');
+  const [sseConnected, setSseConnected] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fetchShipments = async () => {
     setLoading(true);
@@ -24,7 +32,6 @@ export const App: React.FC = () => {
       if (json.success && Array.isArray(json.data)) {
         setShipments(json.data);
         if (json.data.length > 0) {
-          // If no shipment selected yet or previous selection updated, update selected
           const updatedSelected = selectedShipment
             ? json.data.find((s: Shipment) => s.id === selectedShipment.id) || json.data[0]
             : json.data[0];
@@ -35,7 +42,7 @@ export const App: React.FC = () => {
         setError(json.error || 'Failed to fetch shipments from Hyperledger Fabric world state');
       }
     } catch (err: any) {
-      setError(`Cannot connect to REST API Gateway on port 3001 (${err.message}). Make sure server is running.`);
+      setError(`Cannot connect to REST API Gateway on port 3001 (${err.message}).`);
     } finally {
       setLoading(false);
     }
@@ -53,13 +60,59 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleFetchCertificate = async (id: string) => {
+    try {
+      const res = await fetch(`/api/shipments/${id}/certificate`);
+      const json = await res.json();
+      if (json.success) {
+        setCertData(json);
+      } else {
+        alert(`Error fetching certificate: ${json.error}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  // Setup Real-time Server-Sent Events (SSE) Stream
   useEffect(() => {
     fetchShipments();
+
+    const eventSource = new EventSource('/api/events/stream');
+    eventSource.onopen = () => {
+      setSseConnected(true);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type !== 'CONNECTED') {
+          showToast(`⚡ Real-Time Ledger Event: ${data.eventType} on Block #${data.blockNumber}`);
+          fetchShipments();
+        }
+      } catch (err) {
+        console.error('SSE Event error:', err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      setSseConnected(false);
+    };
+
     const interval = setInterval(() => {
       fetchShipments();
-    }, 8000); // auto-refresh every 8s
-    return () => clearInterval(interval);
+    }, 10000);
+
+    return () => {
+      eventSource.close();
+      clearInterval(interval);
+    };
   }, []);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   const handleSelectShipment = (shipment: Shipment) => {
     setSelectedShipment(shipment);
@@ -143,9 +196,8 @@ export const App: React.FC = () => {
   };
 
   const handleRunSimulation = async (id: string) => {
-    // Inject IoT readings including spike
     await handleLogTelemetry(id, 4.2, 'IOT-SIM-01');
-    await handleLogTelemetry(id, 14.8, 'IOT-SIM-SPIKE');
+    await handleLogTelemetry(id, 16.8, 'IOT-SIM-SPIKE');
     setModalMode(null);
     fetchShipments();
   };
@@ -156,12 +208,38 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          right: '32px',
+          zIndex: 90,
+          background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+          color: '#ffffff',
+          padding: '12px 20px',
+          borderRadius: '12px',
+          fontWeight: 600,
+          fontSize: '0.85rem',
+          boxShadow: '0 10px 25px rgba(6, 182, 212, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          <Zap size={16} /> {toastMessage}
+        </div>
+      )}
+
       <Navbar
         onRefresh={fetchShipments}
         onOpenCreate={() => setModalMode('create')}
         onOpenSimulator={() => setModalMode('simulator')}
         loading={loading}
         activeCount={totalCount}
+        activeRole={activeRole}
+        onChangeRole={setActiveRole}
+        sseConnected={sseConnected}
       />
 
       <main style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '28px 32px' }}>
@@ -169,7 +247,7 @@ export const App: React.FC = () => {
           <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '24px', borderColor: 'var(--accent-rose)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <ShieldAlert color="#f43f5e" size={24} />
             <div>
-              <strong style={{ color: '#fb7185' }}>API Gateway Warning</strong>
+              <strong style={{ color: '#fb7185' }}>API Gateway Connection Warning</strong>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{error}</div>
             </div>
           </div>
@@ -209,17 +287,17 @@ export const App: React.FC = () => {
 
           <div className="glass-panel" style={{ padding: '18px 22px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-              Smart Contract Rules
+              MSP Role Access
             </div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '8px', color: '#a78bfa' }}>
-              Auto-Compromise @ Threshold Breach
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, marginTop: '8px', color: '#a78bfa' }}>
+              {activeRole} Active
             </div>
           </div>
         </div>
 
-        {/* Main Grid: Shipments List & Details */}
+        {/* Main Grid: Shipments List & Inspector */}
         <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '28px', alignItems: 'start' }}>
-          {/* Left Column: Shipment Selector List */}
+          {/* Left Column: Shipment List */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h2 style={{ fontSize: '1.1rem', color: '#f8fafc' }}>World State Assets</h2>
@@ -228,7 +306,7 @@ export const App: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '14px', maxHeight: '780px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'grid', gap: '14px', maxHeight: '820px', overflowY: 'auto', paddingRight: '4px' }}>
               {shipments.map((s) => (
                 <ShipmentCard
                   key={s.id}
@@ -237,16 +315,10 @@ export const App: React.FC = () => {
                   onSelect={handleSelectShipment}
                 />
               ))}
-
-              {shipments.length === 0 && !loading && (
-                <div className="glass-panel" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No shipments found. Click '+ New' or seed initial data.
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Right Column: Active Asset Inspector & Smart Actions */}
+          {/* Right Column: Active Asset Inspector & Smart Controls */}
           {selectedShipment ? (
             <div style={{ display: 'grid', gap: '24px' }}>
               {/* Asset Action Toolbar */}
@@ -260,24 +332,40 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button className="secondary-btn" onClick={() => setShowQRModal(true)} title="Scan Cargo QR Tag">
+                    <QrCode size={15} color="#06b6d4" /> QR Tag
+                  </button>
+
+                  <button className="secondary-btn" onClick={() => handleFetchCertificate(selectedShipment.id)} title="Generate PDF Provenance Audit Certificate">
+                    <FileCheck size={15} color="#34d399" /> Audit Cert
+                  </button>
+
                   <button className="secondary-btn" onClick={() => setModalMode('location')}>
-                    <MapPin size={15} color="#10b981" /> Update Checkpoint
+                    <MapPin size={15} color="#10b981" /> Checkpoint
                   </button>
+                  
                   <button className="secondary-btn" onClick={() => setModalMode('telemetry')}>
-                    <Thermometer size={15} color="#06b6d4" /> Log IoT Temp
+                    <Thermometer size={15} color="#06b6d4" /> Log IoT
                   </button>
+
                   <button className="secondary-btn" onClick={() => setModalMode('custody')}>
                     <Truck size={15} color="#8b5cf6" /> Transfer Custody
                   </button>
                 </div>
               </div>
 
-              {/* IoT Cold Chain Live Telemetry Chart */}
+              {/* Interactive World Route Map & Geofence Corridor */}
+              <WorldMap shipment={selectedShipment} />
+
+              {/* Multi-Sensor Telemetry Suite */}
               <TelemetryChart
-                readings={selectedShipment.temperatureData}
+                readings={selectedShipment.telemetryHistory || []}
                 minThreshold={selectedShipment.minTempThreshold}
                 maxThreshold={selectedShipment.maxTempThreshold}
+                maxHumidity={selectedShipment.maxHumidityThreshold || 70}
+                maxShock={selectedShipment.maxShockThreshold || 4.5}
+                maxLight={selectedShipment.maxLightThreshold || 50}
                 shipmentId={selectedShipment.id}
               />
 
@@ -295,6 +383,40 @@ export const App: React.FC = () => {
         </div>
       </main>
 
+      {/* Modern Footer with Flugelsoft Labs Copyrights */}
+      <footer style={{
+        borderTop: '1px solid var(--border-card)',
+        background: 'rgba(9, 13, 22, 0.95)',
+        padding: '24px 32px',
+        marginTop: '60px'
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          fontSize: '0.85rem',
+          color: 'var(--text-muted)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
+              <Box size={16} color="#ffffff" />
+            </div>
+            <div>
+              <strong style={{ color: '#f8fafc' }}>HyperTrace Enterprise Blockchain Platform</strong>
+              <div style={{ fontSize: '0.75rem', marginTop: '2px' }}>Powered by Hyperledger Fabric v2.5 Smart Contracts & Raft Consensus</div>
+            </div>
+          </div>
+
+          <div>
+            © 2026 <strong>Flugelsoft Labs</strong>. All Rights Reserved.
+          </div>
+        </div>
+      </footer>
+
       <ActionsModal
         mode={modalMode}
         selectedShipment={selectedShipment}
@@ -305,6 +427,16 @@ export const App: React.FC = () => {
         onSubmitTelemetry={handleLogTelemetry}
         onSubmitCustody={handleTransferCustody}
         onRunSimulation={handleRunSimulation}
+      />
+
+      <QRCodeModal
+        shipment={selectedShipment}
+        onClose={() => setShowQRModal(false)}
+      />
+
+      <CertificateModal
+        certData={certData}
+        onClose={() => setCertData(null)}
       />
     </div>
   );

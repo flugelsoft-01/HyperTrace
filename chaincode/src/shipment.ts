@@ -5,16 +5,30 @@ export enum ShipmentStatus {
   COMPROMISED = 'Compromised'
 }
 
-export interface TemperatureReading {
+export interface SensorTelemetry {
   timestamp: string;
-  temperature: number;
+  temperature: number;      // °C
+  humidity: number;         // % RH
+  shockGForce: number;      // Acceleration G force
+  lightExposureLux: number; // Lux (seal breach detection)
+  latitude: number;         // GPS Lat
+  longitude: number;        // GPS Long
   sensorId: string;
 }
 
 export interface LocationUpdate {
   location: string;
+  latitude?: number;
+  longitude?: number;
   timestamp: string;
   updatedBy: string;
+}
+
+export interface GeofenceBounds {
+  minLat: number;
+  maxLat: number;
+  minLong: number;
+  maxLong: number;
 }
 
 export interface Shipment {
@@ -23,19 +37,26 @@ export interface Shipment {
   origin: string;
   destination: string;
   currentLocation: string;
+  currentLat?: number;
+  currentLong?: number;
   carrier: string;
   owner: string;
   timestamp: string;
   status: ShipmentStatus;
-  temperatureData: TemperatureReading[];
+  telemetryHistory: SensorTelemetry[];
   locationHistory: LocationUpdate[];
   minTempThreshold: number;
   maxTempThreshold: number;
+  maxHumidityThreshold: number;
+  maxShockThreshold: number;
+  maxLightThreshold: number;
+  geofence?: GeofenceBounds;
 }
 
 export interface HistoryRecord {
   txId: string;
   timestamp: string;
+  blockNumber: number;
   isDelete: boolean;
   value: Shipment;
 }

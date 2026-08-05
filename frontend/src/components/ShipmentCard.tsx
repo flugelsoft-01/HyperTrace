@@ -13,8 +13,8 @@ export const ShipmentCard: React.FC<ShipmentCardProps> = ({
   isSelected,
   onSelect
 }) => {
-  const latestTemp = shipment.temperatureData.length > 0
-    ? shipment.temperatureData[shipment.temperatureData.length - 1].temperature
+  const latestTemp = shipment.telemetryHistory && shipment.telemetryHistory.length > 0
+    ? shipment.telemetryHistory[shipment.telemetryHistory.length - 1].temperature
     : null;
 
   const renderStatusBadge = (status: ShipmentStatus) => {

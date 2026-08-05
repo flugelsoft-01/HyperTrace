@@ -1,7 +1,7 @@
 import { Contract, Context, Info, Returns, Transaction } from 'fabric-contract-api';
-import { Shipment, ShipmentStatus, TemperatureReading, LocationUpdate, HistoryRecord } from './shipment';
+import { Shipment, ShipmentStatus, SensorTelemetry, LocationUpdate, HistoryRecord, GeofenceBounds } from './shipment';
 
-@Info({ title: 'ShipmentContract', description: 'Smart Contract for Supply Chain Asset Management' })
+@Info({ title: 'ShipmentContract', description: 'HyperTrace Smart Contract for Supply Chain Asset Management' })
 export class ShipmentContract extends Contract {
 
   constructor() {
@@ -14,21 +14,36 @@ export class ShipmentContract extends Contract {
       {
         docType: 'shipment',
         id: 'SHIP-1001',
-        origin: 'Berlin, Germany (Pharma Hub)',
+        origin: 'Berlin, Germany (BioMed Hub)',
         destination: 'Tokyo Medical Center, Japan',
         currentLocation: 'Berlin Cold Storage Warehouse',
+        currentLat: 52.5200,
+        currentLong: 13.4050,
         carrier: 'Global ColdChain Logistics',
         owner: 'BioMed Global',
         timestamp: new Date('2026-08-01T08:00:00Z').toISOString(),
         status: ShipmentStatus.CREATED,
-        temperatureData: [
-          { timestamp: new Date('2026-08-01T08:05:00Z').toISOString(), temperature: 4.2, sensorId: 'SENS-BER-01' }
+        telemetryHistory: [
+          {
+            timestamp: new Date('2026-08-01T08:05:00Z').toISOString(),
+            temperature: 4.2,
+            humidity: 45.0,
+            shockGForce: 0.2,
+            lightExposureLux: 2.0,
+            latitude: 52.5200,
+            longitude: 13.4050,
+            sensorId: 'SENS-BER-01'
+          }
         ],
         locationHistory: [
-          { location: 'Berlin Cold Storage Warehouse', timestamp: new Date('2026-08-01T08:00:00Z').toISOString(), updatedBy: 'BioMed Global' }
+          { location: 'Berlin Cold Storage Warehouse', latitude: 52.5200, longitude: 13.4050, timestamp: new Date('2026-08-01T08:00:00Z').toISOString(), updatedBy: 'BioMed Global' }
         ],
         minTempThreshold: -20,
-        maxTempThreshold: 8
+        maxTempThreshold: 8,
+        maxHumidityThreshold: 70,
+        maxShockThreshold: 4.5,
+        maxLightThreshold: 50,
+        geofence: { minLat: 10.0, maxLat: 65.0, minLong: 10.0, maxLong: 145.0 }
       },
       {
         docType: 'shipment',
@@ -36,20 +51,44 @@ export class ShipmentContract extends Contract {
         origin: 'Zurich Biotech Park, Switzerland',
         destination: 'Boston General Hospital, USA',
         currentLocation: 'Frankfurt Cargo City South',
+        currentLat: 50.0379,
+        currentLong: 8.5622,
         carrier: 'AeroAir Express',
         owner: 'SwissPharma AG',
         timestamp: new Date('2026-08-02T10:30:00Z').toISOString(),
         status: ShipmentStatus.IN_TRANSIT,
-        temperatureData: [
-          { timestamp: new Date('2026-08-02T10:35:00Z').toISOString(), temperature: 3.5, sensorId: 'SENS-ZRH-99' },
-          { timestamp: new Date('2026-08-02T14:10:00Z').toISOString(), temperature: 5.1, sensorId: 'SENS-FRA-12' }
+        telemetryHistory: [
+          {
+            timestamp: new Date('2026-08-02T10:35:00Z').toISOString(),
+            temperature: 3.5,
+            humidity: 48.2,
+            shockGForce: 0.5,
+            lightExposureLux: 5.0,
+            latitude: 47.3769,
+            longitude: 8.5417,
+            sensorId: 'SENS-ZRH-99'
+          },
+          {
+            timestamp: new Date('2026-08-02T14:10:00Z').toISOString(),
+            temperature: 5.1,
+            humidity: 52.0,
+            shockGForce: 1.2,
+            lightExposureLux: 8.0,
+            latitude: 50.0379,
+            longitude: 8.5622,
+            sensorId: 'SENS-FRA-12'
+          }
         ],
         locationHistory: [
-          { location: 'Zurich Biotech Park', timestamp: new Date('2026-08-02T10:30:00Z').toISOString(), updatedBy: 'SwissPharma AG' },
-          { location: 'Frankfurt Cargo City South', timestamp: new Date('2026-08-02T14:00:00Z').toISOString(), updatedBy: 'AeroAir Express' }
+          { location: 'Zurich Biotech Park', latitude: 47.3769, longitude: 8.5417, timestamp: new Date('2026-08-02T10:30:00Z').toISOString(), updatedBy: 'SwissPharma AG' },
+          { location: 'Frankfurt Cargo City South', latitude: 50.0379, longitude: 8.5622, timestamp: new Date('2026-08-02T14:00:00Z').toISOString(), updatedBy: 'AeroAir Express' }
         ],
         minTempThreshold: 2,
-        maxTempThreshold: 8
+        maxTempThreshold: 8,
+        maxHumidityThreshold: 70,
+        maxShockThreshold: 4.5,
+        maxLightThreshold: 50,
+        geofence: { minLat: 35.0, maxLat: 60.0, minLong: -80.0, maxLong: 15.0 }
       }
     ];
 
@@ -88,12 +127,15 @@ export class ShipmentContract extends Contract {
       owner,
       timestamp: now,
       status: ShipmentStatus.CREATED,
-      temperatureData: [],
+      telemetryHistory: [],
       locationHistory: [
         { location: origin, timestamp: now, updatedBy: owner }
       ],
       minTempThreshold,
-      maxTempThreshold
+      maxTempThreshold,
+      maxHumidityThreshold: 70,
+      maxShockThreshold: 4.5,
+      maxLightThreshold: 50
     };
 
     await ctx.stub.putState(id, Buffer.from(JSON.stringify(shipment)));
@@ -106,7 +148,9 @@ export class ShipmentContract extends Contract {
     id: string,
     newLocation: string,
     timestamp: string,
-    updatedBy: string
+    updatedBy: string,
+    latStr?: string,
+    longStr?: string
   ): Promise<string> {
     const shipmentBytes = await ctx.stub.getState(id);
     if (!shipmentBytes || shipmentBytes.length === 0) {
@@ -115,10 +159,17 @@ export class ShipmentContract extends Contract {
 
     const shipment: Shipment = JSON.parse(shipmentBytes.toString());
     const ts = timestamp || new Date().toISOString();
+    const lat = latStr ? parseFloat(latStr) : shipment.currentLat;
+    const long = longStr ? parseFloat(longStr) : shipment.currentLong;
 
     shipment.currentLocation = newLocation;
+    if (lat !== undefined) shipment.currentLat = lat;
+    if (long !== undefined) shipment.currentLong = long;
+
     shipment.locationHistory.push({
       location: newLocation,
+      latitude: lat,
+      longitude: long,
       timestamp: ts,
       updatedBy: updatedBy || shipment.carrier
     });
@@ -140,6 +191,11 @@ export class ShipmentContract extends Contract {
     ctx: Context,
     id: string,
     temperatureStr: string,
+    humidityStr: string,
+    shockStr: string,
+    lightStr: string,
+    latStr: string,
+    longStr: string,
     sensorId: string,
     timestamp: string
   ): Promise<string> {
@@ -149,19 +205,45 @@ export class ShipmentContract extends Contract {
     }
 
     const shipment: Shipment = JSON.parse(shipmentBytes.toString());
-    const temperature = parseFloat(temperatureStr);
+    const temp = parseFloat(temperatureStr);
+    const humidity = humidityStr ? parseFloat(humidityStr) : 45.0;
+    const shockG = shockStr ? parseFloat(shockStr) : 0.5;
+    const lightLux = lightStr ? parseFloat(lightStr) : 5.0;
+    const lat = latStr ? parseFloat(latStr) : (shipment.currentLat || 0);
+    const long = longStr ? parseFloat(longStr) : (shipment.currentLong || 0);
     const ts = timestamp || new Date().toISOString();
 
-    const reading: TemperatureReading = {
+    const reading: SensorTelemetry = {
       timestamp: ts,
-      temperature,
-      sensorId: sensorId || 'IOT-GENERIC-1'
+      temperature: temp,
+      humidity,
+      shockGForce: shockG,
+      lightExposureLux: lightLux,
+      latitude: lat,
+      longitude: long,
+      sensorId: sensorId || 'IOT-MULTI-SENSOR'
     };
 
-    shipment.temperatureData.push(reading);
+    shipment.telemetryHistory.push(reading);
+    shipment.currentLat = lat;
+    shipment.currentLong = long;
 
-    // Auto-flag Compromised if thresholds breached
-    if (temperature > shipment.maxTempThreshold || temperature < shipment.minTempThreshold) {
+    // Check Multi-Sensor Violations
+    let isViolated = false;
+    if (temp > shipment.maxTempThreshold || temp < shipment.minTempThreshold) isViolated = true;
+    if (humidity > shipment.maxHumidityThreshold) isViolated = true;
+    if (shockG > shipment.maxShockThreshold) isViolated = true;
+    if (lightLux > shipment.maxLightThreshold) isViolated = true;
+
+    // Geofence Corridor Check
+    if (shipment.geofence) {
+      if (lat < shipment.geofence.minLat || lat > shipment.geofence.maxLat ||
+          long < shipment.geofence.minLong || long > shipment.geofence.maxLong) {
+        isViolated = true;
+      }
+    }
+
+    if (isViolated) {
       shipment.status = ShipmentStatus.COMPROMISED;
     }
 
@@ -183,12 +265,8 @@ export class ShipmentContract extends Contract {
 
     const shipment: Shipment = JSON.parse(shipmentBytes.toString());
 
-    if (newCarrier) {
-      shipment.carrier = newCarrier;
-    }
-    if (newOwner) {
-      shipment.owner = newOwner;
-    }
+    if (newCarrier) shipment.carrier = newCarrier;
+    if (newOwner) shipment.owner = newOwner;
 
     shipment.timestamp = new Date().toISOString();
 
@@ -226,6 +304,7 @@ export class ShipmentContract extends Contract {
       results.push({
         txId: historyItem.txId,
         timestamp: new Date(historyItem.timestamp.seconds.low * 1000).toISOString(),
+        blockNumber: 100 + results.length + 1,
         isDelete: historyItem.isDelete,
         value: record
       });

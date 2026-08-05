@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, ShieldCheck, Cpu, RefreshCw, PlusCircle, Activity } from 'lucide-react';
+import { MSPRole } from '../types';
+import { Box, ShieldCheck, Cpu, RefreshCw, PlusCircle, Activity, UserCheck, Zap } from 'lucide-react';
 
 interface NavbarProps {
   onRefresh: () => void;
@@ -7,6 +8,9 @@ interface NavbarProps {
   onOpenSimulator: () => void;
   loading: boolean;
   activeCount: number;
+  activeRole: MSPRole;
+  onChangeRole: (role: MSPRole) => void;
+  sseConnected: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -14,7 +18,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreate,
   onOpenSimulator,
   loading,
-  activeCount
+  activeCount,
+  activeRole,
+  onChangeRole,
+  sseConnected
 }) => {
   return (
     <header style={{
@@ -24,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       position: 'sticky',
       top: 0,
       zIndex: 50,
-      padding: '16px 32px'
+      padding: '14px 32px'
     }}>
       <div style={{
         maxWidth: '1400px',
@@ -53,33 +60,48 @@ export const Navbar: React.FC<NavbarProps> = ({
               HyperTrace
             </h1>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>Hyperledger Fabric v2.5 Smart Contract Network</span>
+              <span>Hyperledger Fabric v2.5 Enterprise Network</span>
             </p>
           </div>
         </div>
 
-        {/* Network Indicators */}
+        {/* Network & Role Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* SSE Stream Indicator */}
           <div className="glass-panel" style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
-            <span style={{ color: 'var(--text-muted)' }}>Channel:</span>
-            <span className="mono-text" style={{ fontWeight: 600, color: '#60a5fa' }}>mychannel</span>
+            <Zap size={14} color={sseConnected ? '#10b981' : '#f59e0b'} />
+            <span style={{ color: 'var(--text-muted)' }}>SSE Stream:</span>
+            <span style={{ fontWeight: 600, color: sseConnected ? '#34d399' : '#fbbf24' }}>
+              {sseConnected ? 'LIVE PUSH' : 'POLLING'}
+            </span>
           </div>
 
-          <div className="glass-panel" style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <ShieldCheck size={14} color="#10b981" />
-            <span style={{ color: 'var(--text-muted)' }}>Org:</span>
-            <span style={{ fontWeight: 600, color: '#e2e8f0' }}>Org1 (Peer0)</span>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Cpu size={14} color="#06b6d4" />
-            <span style={{ color: 'var(--text-muted)' }}>World State:</span>
-            <span style={{ fontWeight: 600, color: '#38bdf8' }}>CouchDB</span>
+          {/* MSP Role Selector */}
+          <div className="glass-panel" style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <UserCheck size={14} color="#8b5cf6" />
+            <span style={{ color: 'var(--text-muted)' }}>MSP Identity:</span>
+            <select
+              value={activeRole}
+              onChange={(e) => onChangeRole(e.target.value as MSPRole)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#a78bfa',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                padding: '2px 4px'
+              }}
+            >
+              <option value="Org1MSP" style={{ background: '#0f172a', color: '#f8fafc' }}>Org1MSP (Manufacturer)</option>
+              <option value="Org2MSP" style={{ background: '#0f172a', color: '#f8fafc' }}>Org2MSP (Carrier)</option>
+              <option value="CustomsMSP" style={{ background: '#0f172a', color: '#f8fafc' }}>CustomsMSP (Inspector)</option>
+              <option value="AuditorMSP" style={{ background: '#0f172a', color: '#f8fafc' }}>AuditorMSP (Independent)</option>
+            </select>
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button className="secondary-btn" onClick={onOpenSimulator}>
             <Activity size={16} color="#06b6d4" />
@@ -88,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           <button className="glow-btn" onClick={onOpenCreate}>
             <PlusCircle size={16} />
-            New Shipment
+            New Asset
           </button>
 
           <button className="secondary-btn" onClick={onRefresh} disabled={loading} title="Refresh Ledger State">

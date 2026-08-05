@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hyperledger Fabric Supply Chain — Automated IoT Telemetry & Provenance Simulator
+HyperTrace — Multi-Sensor IoT Telemetry & Provenance Simulation Suite
 """
 
 import time
@@ -30,25 +30,22 @@ def make_request(url, method="GET", data=None):
 
 def main():
     print("======================================================================")
-    print("🛰️  Hyperledger Fabric IoT Sensor & Provenance Simulation Suite")
+    print("🛰️  HyperTrace Multi-Sensor IoT Telemetry & Provenance Simulation Suite")
     print("======================================================================")
 
-    # 1. Health check
-    print("\n1️⃣  Checking Hyperledger Fabric REST API Gateway status...")
+    print("\n1️⃣  Checking HyperTrace REST API Gateway status...")
     health = make_request(f"{API_BASE_URL}/health")
     if not health or not health.get("status"):
-        print("❌ Gateway is offline! Please start the API Gateway server first (npm run start in api-gateway).")
+        print("❌ Gateway is offline! Please start the API Gateway server first.")
         sys.exit(1)
-    print(f"✅ Fabric Gateway status: {health['status']} | Network: {health['network']} | Channel: {health['channel']}")
+    print(f"✅ Gateway status: {health['status']} | System: {health['system']} | Channel: {health['channel']}")
 
-    # 2. Seed initial ledger
     print("\n2️⃣  Seeding Fabric World State ledger with initial shipments...")
     seed_res = make_request(f"{API_BASE_URL}/seed", method="POST")
     print(f"✅ {seed_res.get('message')}")
 
-    # 3. Create a new cold-chain vaccine shipment
     shipment_id = f"SHIP-VAX-{random.randint(2000, 9999)}"
-    print(f"\n3️⃣  Executing 'CreateShipment' transaction on Hyperledger Fabric: {shipment_id}...")
+    print(f"\n3️⃣  Executing 'CreateShipment' transaction on Fabric: {shipment_id}...")
     create_payload = {
         "id": shipment_id,
         "origin": "BioNTech Facility, Marburg, Germany",
@@ -61,38 +58,49 @@ def main():
     create_res = make_request(f"{API_BASE_URL}/shipments", method="POST", data=create_payload)
     print(f"✅ Created asset {shipment_id}. Initial status: {create_res['data']['status']}")
 
-    # 4. Log Normal IoT Temperature Readings
-    print("\n4️⃣  Logging normal cold-chain IoT temperature readings...")
-    for temp in [4.1, 3.8, 4.5, 5.0]:
+    print("\n4️⃣  Logging Multi-Sensor IoT Telemetry (Temp, Humidity, G-Force, Light, GPS)...")
+    for temp, hum, shock, lux, lat, long in [
+        (4.1, 45.0, 0.2, 2.0, 52.5200, 13.4050),
+        (3.8, 46.2, 0.4, 3.0, 50.0379, 8.5622),
+        (4.5, 48.0, 0.5, 2.5, 25.2532, 55.3657),
+        (5.0, 50.1, 0.6, 3.5, 1.3644, 103.9915)
+    ]:
         t_payload = {
             "temperature": temp,
-            "sensorId": "IOT-SENSOR-MARBURG-01"
+            "humidity": hum,
+            "shockGForce": shock,
+            "lightExposureLux": lux,
+            "latitude": lat,
+            "longitude": long,
+            "sensorId": "IOT-MULTI-SENSOR-HUB"
         }
         res = make_request(f"{API_BASE_URL}/shipments/{shipment_id}/telemetry", method="POST", data=t_payload)
-        print(f"   [IoT Reading]: {temp}°C | Status: {res['data']['status']}")
-        time.sleep(0.5)
+        print(f"   [Multi-Sensor]: {temp}°C | {hum}% RH | {shock}G | {lux} Lux | Status: {res['data']['status']}")
+        time.sleep(0.4)
 
-    # 5. Update Transit Location Checkpoint
-    print("\n5️⃣  Updating location checkpoint to Transit Hub (Frankfurt Airport)...")
+    print("\n5️⃣  Updating location checkpoint to Transit Hub...")
     loc_payload = {
-        "newLocation": "Frankfurt Airport Pharma Hub Gate B22",
-        "updatedBy": "Lufthansa Cargo Ground Team"
+        "newLocation": "Dubai Cargo Mega Terminal",
+        "latitude": 25.2532,
+        "longitude": 55.3657,
+        "updatedBy": "Emirates SkyCargo"
     }
     loc_res = make_request(f"{API_BASE_URL}/shipments/{shipment_id}/location", method="POST", data=loc_payload)
     print(f"✅ Updated location: {loc_res['data']['currentLocation']} | Status: {loc_res['data']['status']}")
 
-    # 6. Inject Temperature Spike (> Max Threshold 8.0°C) to test Smart Contract Auto-Compromise logic
-    print("\n6️⃣  🚨 SIMULATING IOT SENSOR ALARM: Temperature Spike to 18.5°C (Exceeds Max Threshold 8°C)...")
+    print("\n6️⃣  🚨 SIMULATING IOT SENSOR ALARM: Container Heat Spike (18.5°C) & Container Seal Light Breach (120 Lux)...")
     spike_payload = {
         "temperature": 18.5,
+        "humidity": 82.0,
+        "shockGForce": 5.2,
+        "lightExposureLux": 120.0,
+        "latitude": 25.2532,
+        "longitude": 55.3657,
         "sensorId": "IOT-SENSOR-CARGO-HOLD-ALARM"
     }
     spike_res = make_request(f"{API_BASE_URL}/shipments/{shipment_id}/telemetry", method="POST", data=spike_payload)
     print(f"🚨 SMART CONTRACT ACTION TRIGGERED! Ledger Asset Status: {spike_res['data']['status']}")
-    if spike_res['data']['status'] == "Compromised":
-        print("✅ SUCCESS: Smart contract automatically flagged shipment as 'COMPROMISED' due to temperature breach!")
 
-    # 7. Transfer Custody to Emergency Cold Storage Auditor
     print("\n7️⃣  Executing 'TransferCustody' transaction on Fabric...")
     custody_payload = {
         "newCarrier": "Swissport Cold Chain Rescue Team",
@@ -101,16 +109,12 @@ def main():
     custody_res = make_request(f"{API_BASE_URL}/shipments/{shipment_id}/custody", method="POST", data=custody_payload)
     print(f"✅ Custody transferred. New Carrier: {custody_res['data']['carrier']} | New Owner: {custody_res['data']['owner']}")
 
-    # 8. Query Full Immutable Provenance Trail
-    print(f"\n8️⃣  Querying full Fabric ledger provenance trail for asset {shipment_id}...")
-    history_res = make_request(f"{API_BASE_URL}/shipments/{shipment_id}/history")
-    history_records = history_res.get("data", [])
-    print(f"✅ Retrieved {len(history_records)} block history records for {shipment_id}:")
-    for idx, rec in enumerate(history_records, 1):
-        print(f"   [{idx}] Block #{rec['blockNumber']} | TxID: {rec['txId'][:20]}... | Status: {rec['value']['status']} | Location: {rec['value']['currentLocation']}")
+    print(f"\n8️⃣  Fetching Cryptographic Certificate of Provenance for asset {shipment_id}...")
+    cert_res = make_request(f"{API_BASE_URL}/shipments/{shipment_id}/certificate")
+    print(f"✅ Certificate Issued: {cert_res.get('certificateId')} | Endorsements: {cert_res.get('mspEndorsements')}")
 
     print("\n======================================================================")
-    print("🎉 Hyperledger Fabric Simulation Completed Successfully!")
+    print("🎉 HyperTrace Simulation Suite Completed Successfully!")
     print("======================================================================")
 
 if __name__ == "__main__":
