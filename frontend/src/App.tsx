@@ -430,6 +430,7 @@ export const App: React.FC = () => {
       />
 
       <QRCodeModal
+        isOpen={showQRModal}
         shipment={selectedShipment}
         onClose={() => setShowQRModal(false)}
       />

@@ -3,12 +3,13 @@ import { Shipment } from '../types';
 import { X, QrCode, Copy, Check } from 'lucide-react';
 
 interface QRCodeModalProps {
+  isOpen: boolean;
   shipment: Shipment | null;
   onClose: () => void;
 }
 
-export const QRCodeModal: React.FC<QRCodeModalProps> = ({ shipment, onClose }) => {
-  if (!shipment) return null;
+export const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, shipment, onClose }) => {
+  if (!isOpen || !shipment) return null;
 
   const [copied, setCopied] = useState(false);
   const verificationUrl = `${window.location.origin}/api/shipments/${shipment.id}`;
@@ -71,7 +72,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ shipment, onClose }) =
           {shipment.id}
         </p>
 
-        {/* Custom Vector QR Code Graphics */}
+        {/* Vector QR Code Graphics */}
         <div style={{
           background: '#ffffff',
           padding: '20px',
@@ -81,7 +82,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ shipment, onClose }) =
           boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
         }}>
           <svg viewBox="0 0 100 100" width="160" height="160">
-            {/* Corner Alignment Squares */}
             <rect x="5" y="5" width="26" height="26" fill="#090d16" />
             <rect x="9" y="9" width="18" height="18" fill="#ffffff" />
             <rect x="13" y="13" width="10" height="10" fill="#090d16" />
@@ -94,7 +94,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({ shipment, onClose }) =
             <rect x="9" y="73" width="18" height="18" fill="#ffffff" />
             <rect x="13" y="77" width="10" height="10" fill="#090d16" />
 
-            {/* Random Matrix Pattern based on shipment ID */}
             <rect x="36" y="10" width="6" height="6" fill="#090d16" />
             <rect x="48" y="10" width="6" height="6" fill="#090d16" />
             <rect x="36" y="22" width="18" height="6" fill="#090d16" />
